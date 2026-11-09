@@ -8,7 +8,12 @@ window.setAuthMode = mode => { const signup=mode==="signup"; el("auth-title").te
 window.submitAuth = async () => { const email=el("auth-email").value.trim(), password=el("auth-password").value; if(!email||password.length<8)return authMsg("Enter a valid email and a password of at least 8 characters.",true); try { const mode=el("auth-mode-toggle").dataset.mode; const {data,error}=mode==="signup"?await supabase.auth.signUp({email,password,options:{emailRedirectTo:location.origin+location.pathname}}):await supabase.auth.signInWithPassword({email,password}); if(error)throw error; if(mode==="signup"&&!data.session)authMsg("Check your inbox to confirm your email, then sign in."); } catch(e){authMsg(e.message,true);} };
 window.resetAuthPassword = async () => { const email=el("auth-email").value.trim(); if(!email)return authMsg("Enter your email first.",true); const {error}=await supabase.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname}); authMsg(error?error.message:"If an account exists, a reset email has been sent.",!!error); };
 window.signOutFreelanceFlow = async () => { const {error}=await supabase.auth.signOut(); if(error)alert(error.message); };
-function startRealtimeSync() {\n if(syncChannel) supabase.removeChannel(syncChannel);\n window.addEventListener("focus",()=>{ if(user) loadCloud().catch(e=>console.warn("Cloud refresh failed",e)); });\n document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible"&&user) loadCloud().catch(e=>console.warn("Cloud refresh failed",e)); });\n}\nasync function loadCloud() {
+function startRealtimeSync() {
+ if(syncChannel) supabase.removeChannel(syncChannel);
+ window.addEventListener("focus",()=>{ if(user) loadCloud().catch(e=>console.warn("Cloud refresh failed",e)); });
+ document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible"&&user) loadCloud().catch(e=>console.warn("Cloud refresh failed",e)); });
+}
+async function loadCloud() {
  const [c,p,t]=await Promise.all([supabase.from("clients").select("*").order("created_at"),supabase.from("projects").select("*").order("created_at"),supabase.from("time_entries").select("*").order("work_date",{ascending:false})]);
  for(const r of [c,p,t])if(r.error)throw r.error;
  appData={clients:(c.data||[]).map(x=>({id:x.id,name:x.name,contact:x.contact||"",notes:x.notes||""})),projects:(p.data||[]).map(x=>({id:x.id,clientId:x.client_id,name:x.name,hourlyRate:Number(x.hourly_rate),maxHours:x.max_hours==null?null:Number(x.max_hours),currency:x.currency||"EUR"})),entries:(t.data||[]).map(x=>({id:x.id,projectId:x.project_id,date:x.work_date,hours:Number(x.hours),description:x.description||""}))};
