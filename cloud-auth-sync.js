@@ -9,7 +9,7 @@ window.submitAuth = async () => { const email=el("auth-email").value.trim(), pas
 window.resetAuthPassword = async () => { const email=el("auth-email").value.trim(); if(!email)return authMsg("Enter your email first.",true); const {error}=await supabase.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname}); authMsg(error?error.message:"If an account exists, a reset email has been sent.",!!error); };
 window.signOutFreelanceFlow = async () => { const {error}=await supabase.auth.signOut(); if(error)alert(error.message); };
 function startRealtimeSync() {
- if(syncChannel) supabase.removeChannel(syncChannel);
+ if (syncChannel) return; // Keep one channel per signed-in user; loadCloud() may run after every Realtime event.
  syncChannel = supabase.channel("freelanceflow-sync-" + user.id);
  for (const table of ["clients", "projects", "time_entries", "timer_sessions"]) {
   syncChannel.on("postgres_changes", { event: "*", schema: "public", table, filter: "user_id=eq." + user.id }, payload => {
