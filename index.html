@@ -11,7 +11,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="FreelanceFlow">
     <link rel="icon" href="icon.svg" type="image/svg+xml">
-    <link rel="apple-touch-icon" href="icons/icon-192.png">
+
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -47,6 +47,18 @@
 </head>
 <body class="h-full flex flex-col text-slate-800 antialiased">
 
+<section id="auth-screen" class="min-h-screen flex items-center justify-center bg-slate-50 px-4 py-12">
+ <div class="w-full max-w-md bg-white border border-slate-200 rounded-2xl shadow-sm p-8">
+  <div class="flex items-center gap-3 mb-8"><div class="p-3 bg-brand-600 text-white rounded-xl"><i data-lucide="clock" class="w-6 h-6"></i></div><div><h1 class="font-bold text-xl text-slate-900">Freelance<span class="text-brand-600">Flow</span></h1><p class="text-sm text-slate-500">Your freelance workspace</p></div></div>
+  <h2 id="auth-title" class="text-2xl font-bold text-slate-900">Welcome back</h2><p id="auth-subtitle" class="text-sm text-slate-500 mt-1">Sign in to access your workspace.</p>
+  <div class="mt-6 space-y-4"><div><label for="auth-email" class="block text-sm font-medium text-slate-700 mb-1">Email</label><input id="auth-email" type="email" autocomplete="email" required class="w-full rounded-xl border border-slate-300 p-3 text-sm" placeholder="you@example.com"></div>
+  <div><label for="auth-password" class="block text-sm font-medium text-slate-700 mb-1">Password</label><input id="auth-password" type="password" autocomplete="current-password" minlength="8" required class="w-full rounded-xl border border-slate-300 p-3 text-sm" placeholder="At least 8 characters"></div>
+  <button id="auth-submit" type="button" onclick="submitAuth()" class="w-full py-3 bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-xl">Sign in</button>
+  <button type="button" onclick="resetAuthPassword()" class="w-full text-sm text-brand-600 hover:underline">Forgot password?</button>
+  <button id="auth-mode-toggle" data-mode="signup" type="button" onclick="setAuthMode(this.dataset.mode)" class="w-full text-sm text-slate-600 hover:text-brand-600">New to FreelanceFlow? Create account</button><p id="auth-message" role="status" aria-live="polite" class="mt-3 text-sm"></p></div>
+ </div>
+</section>
+
     <!-- Header Navigation -->
     <header class="bg-white border-b border-slate-200 sticky top-0 z-30 no-print">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -80,6 +92,8 @@
 
                 <!-- Quick Action Timer Toggle -->
                 <div class="flex items-center gap-3">
+                    <span id="account-email" class="hidden lg:inline text-xs text-slate-500"></span>
+                    <button type="button" onclick="signOutFreelanceFlow()" class="text-xs text-slate-500 hover:text-red-600">Sign out</button>
                     <div id="quick-timer-badge" class="hidden items-center gap-2 bg-amber-50 text-amber-700 border border-amber-200 px-3 py-1.5 rounded-full text-xs font-semibold animate-pulse">
                         <span class="w-2 h-2 rounded-full bg-amber-500"></span>
                         <span id="quick-timer-display">00:00:00</span>
@@ -549,16 +563,16 @@
 
             const projectOptions = appData.projects.map(p => {
                 const client = getClientById(p.clientId);
-                return `<option value="${p.id}">${client.name} - ${p.name} (€${p.hourlyRate}/h)</option>`;
+                return `<option value="${escapeHTML(p.id)}">${escapeHTML(client.name)} - ${escapeHTML(p.name)} (€${escapeHTML(p.hourlyRate)}/h)</option>`;
             }).join('');
 
             timerSelect.innerHTML = projectOptions || '<option value="">No projects available</option>';
             manualSelect.innerHTML = projectOptions || '<option value="">No projects available</option>';
 
-            projectClientSelect.innerHTML = appData.clients.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+            projectClientSelect.innerHTML = appData.clients.map(c => `<option value="${escapeHTML(c.id)}">${escapeHTML(c.name)}</option>`).join('');
             
             reportClientSelect.innerHTML = '<option value="all">All Clients</option>' + 
-                appData.clients.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+                appData.clients.map(c => `<option value="${escapeHTML(c.id)}">${escapeHTML(c.name)}</option>`).join('');
         }
 
         // --- DASHBOARD & CHARTS ---
@@ -607,7 +621,7 @@
                                 <i data-lucide="${isOver ? 'alert-octagon' : 'alert-triangle'}" class="w-5 h-5 flex-shrink-0"></i>
                                 <div>
                                     <p class="text-xs font-bold uppercase tracking-wider">${isOver ? 'Budget Exceeded!' : 'Budget Warning'}</p>
-                                    <p class="text-sm font-medium">Project <strong>${p.name}</strong> (${client.name}) is at <strong>${pct.toFixed(0)}%</strong> of the maximum hours (${used.toFixed(1)} / ${p.maxHours} h).</p>
+                                    <p class="text-sm font-medium">Project <strong>${escapeHTML(p.name)}</strong> (${escapeHTML(client.name)}) is at <strong>${pct.toFixed(0)}%</strong> of the maximum hours (${used.toFixed(1)} / ${p.maxHours} h).</p>
                                 </div>
                             </div>
                         </div>
@@ -634,16 +648,16 @@
 
                 return `
                     <tr class="hover:bg-slate-50 transition">
-                        <td class="py-3 px-4 font-medium text-slate-900">${e.date}</td>
+                        <td class="py-3 px-4 font-medium text-slate-900">${escapeHTML(e.date)}</td>
                         <td class="py-3 px-4">
-                            <div class="font-medium text-slate-800">${proj.name}</div>
-                            <div class="text-xs text-slate-400">${client.name}</div>
+                            <div class="font-medium text-slate-800">${escapeHTML(proj.name)}</div>
+                            <div class="text-xs text-slate-400">${escapeHTML(client.name)}</div>
                         </td>
-                        <td class="py-3 px-4 text-slate-600 max-w-xs truncate">${e.description || '-'}</td>
+                        <td class="py-3 px-4 text-slate-600 max-w-xs truncate">${escapeHTML(e.description || '-')}</td>
                         <td class="py-3 px-4 font-semibold text-slate-800">${parseFloat(e.hours).toFixed(2)} h</td>
                         <td class="py-3 px-4 text-emerald-600 font-semibold">${formatMoney(earnings)}</td>
                         <td class="py-3 px-4 text-right">
-                            <button onclick="deleteEntry('${e.id}')" class="text-slate-400 hover:text-red-600 transition p-1">
+                            <button onclick="deleteEntry('${escapeHTML(e.id)}')" class="text-slate-400 hover:text-red-600 transition p-1">
                                 <i data-lucide="trash-2" class="w-4 h-4"></i>
                             </button>
                         </td>
@@ -820,11 +834,11 @@
                         <div>
                             <div class="flex justify-between items-start">
                                 <div>
-                                    <span class="text-xs font-semibold text-brand-600 bg-brand-50 px-2.5 py-1 rounded-md">${client.name}</span>
-                                    <h4 class="text-base font-bold text-slate-900 mt-2">${p.name}</h4>
+                                    <span class="text-xs font-semibold text-brand-600 bg-brand-50 px-2.5 py-1 rounded-md">${escapeHTML(client.name)}</span>
+                                    <h4 class="text-base font-bold text-slate-900 mt-2">${escapeHTML(p.name)}</h4>
                                 </div>
                                 <div class="text-right">
-                                    <span class="text-base font-bold text-slate-900">€${p.hourlyRate}</span>
+                                    <span class="text-base font-bold text-slate-900">€${escapeHTML(p.hourlyRate)}</span>
                                     <span class="text-xs text-slate-400 block">/ hour</span>
                                 </div>
                             </div>
@@ -847,7 +861,7 @@
                                 <span class="text-slate-400 block">Total Value</span>
                                 <span class="font-bold text-emerald-600 text-sm">${formatMoney(totalEarned)}</span>
                             </div>
-                            <button onclick="deleteProject('${p.id}')" class="text-slate-400 hover:text-red-600 transition p-1">
+                            <button onclick="deleteProject('${escapeHTML(p.id)}')" class="text-slate-400 hover:text-red-600 transition p-1">
                                 <i data-lucide="trash-2" class="w-4 h-4"></i>
                             </button>
                         </div>
@@ -928,12 +942,12 @@
 
                 return `
                     <tr>
-                        <td class="py-3 px-4 font-medium text-slate-900">${e.date}</td>
-                        <td class="py-3 px-4">${client.name}</td>
-                        <td class="py-3 px-4 font-medium">${proj.name}</td>
-                        <td class="py-3 px-4 text-slate-500">${e.description || '-'}</td>
+                        <td class="py-3 px-4 font-medium text-slate-900">${escapeHTML(e.date)}</td>
+                        <td class="py-3 px-4">${escapeHTML(client.name)}</td>
+                        <td class="py-3 px-4 font-medium">${escapeHTML(proj.name)}</td>
+                        <td class="py-3 px-4 text-slate-500">${escapeHTML(e.description || '-')}</td>
                         <td class="py-3 px-4 font-semibold">${e.hours.toFixed(2)} h</td>
-                        <td class="py-3 px-4">€ ${proj.hourlyRate}</td>
+                        <td class="py-3 px-4">€ ${escapeHTML(proj.hourlyRate)}</td>
                         <td class="py-3 px-4 text-right font-bold text-slate-900">${formatMoney(total)}</td>
                     </tr>
                 `;
@@ -948,7 +962,7 @@
                 const proj = getProjectById(e.projectId);
                 const client = getClientById(proj.clientId);
                 const total = e.hours * proj.hourlyRate;
-                csvContent += `"${e.date}","${client.name}","${proj.name}","${e.description || ''}",${e.hours},${proj.hourlyRate},${total}\n`;
+                csvContent += `"${escapeHTML(e.date)}","${client.name}","${escapeHTML(proj.name)}","${e.description || ''}",${e.hours},${escapeHTML(proj.hourlyRate)},${total}\n`;
             });
 
             const encodedUri = encodeURI(csvContent);
@@ -970,6 +984,8 @@
             });
         }
     </script>
+
+    <script type="module" src="cloud-auth-sync.js"></script>
 
     <div id="pwa-tools" class="no-print" style="position:fixed;right:16px;bottom:16px;z-index:60;display:flex;gap:8px;align-items:center">
         <span id="connection-status" style="background:#fff;border:1px solid #cbd5e1;border-radius:999px;padding:8px 12px;font:12px Inter,sans-serif;color:#475569;box-shadow:0 2px 8px #0001">Online</span>
