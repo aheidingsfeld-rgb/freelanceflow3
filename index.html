@@ -1,0 +1,1016 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FreelanceFlow - Hours & Income Dashboard</title>
+    <!-- PWA -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#2563eb">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="FreelanceFlow">
+    <link rel="icon" href="icon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        @media print {
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+            body { background: white; color: black; }
+        }
+    </style>
+</head>
+<body class="h-full flex flex-col text-slate-800 antialiased">
+
+    <!-- Header Navigation -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 no-print">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <!-- Logo & Brand -->
+                <div class="flex items-center gap-3">
+                    <div class="p-2 bg-brand-600 text-white rounded-xl shadow-sm">
+                        <i data-lucide="clock" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-bold text-lg leading-tight text-slate-900">Freelance<span class="text-brand-600">Flow</span></h1>
+                        <p class="text-xs text-slate-500">Hours & Income Dashboard</p>
+                    </div>
+                </div>
+
+                <!-- Navigation Tabs -->
+                <nav class="hidden md:flex space-x-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
+                    <button onclick="switchTab('dashboard')" id="nav-dashboard" class="tab-btn active px-4 py-2 text-sm font-medium rounded-lg text-brand-600 bg-white shadow-sm transition">
+                        <i data-lucide="layout-dashboard" class="w-4 h-4 inline mr-1.5"></i> Dashboard
+                    </button>
+                    <button onclick="switchTab('timer')" id="nav-timer" class="tab-btn px-4 py-2 text-sm font-medium rounded-lg text-slate-600 hover:text-slate-900 transition">
+                        <i data-lucide="play-circle" class="w-4 h-4 inline mr-1.5"></i> Track Hours
+                    </button>
+                    <button onclick="switchTab('projects')" id="nav-projects" class="tab-btn px-4 py-2 text-sm font-medium rounded-lg text-slate-600 hover:text-slate-900 transition">
+                        <i data-lucide="briefcase" class="w-4 h-4 inline mr-1.5"></i> Clients & Projects
+                    </button>
+                    <button onclick="switchTab('reports')" id="nav-reports" class="tab-btn px-4 py-2 text-sm font-medium rounded-lg text-slate-600 hover:text-slate-900 transition">
+                        <i data-lucide="file-text" class="w-4 h-4 inline mr-1.5"></i> Export & Report
+                    </button>
+                </nav>
+
+                <!-- Quick Action Timer Toggle -->
+                <div class="flex items-center gap-3">
+                    <div id="quick-timer-badge" class="hidden items-center gap-2 bg-amber-50 text-amber-700 border border-amber-200 px-3 py-1.5 rounded-full text-xs font-semibold animate-pulse">
+                        <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+                        <span id="quick-timer-display">00:00:00</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mobile Navigation Bar -->
+        <div class="md:hidden border-t border-slate-200 bg-white px-2 py-2 flex justify-around">
+            <button onclick="switchTab('dashboard')" class="mobile-nav-btn p-2 text-xs font-medium text-slate-600 flex flex-col items-center">
+                <i data-lucide="layout-dashboard" class="w-5 h-5 mb-1"></i> Dashboard
+            </button>
+            <button onclick="switchTab('timer')" class="mobile-nav-btn p-2 text-xs font-medium text-slate-600 flex flex-col items-center">
+                <i data-lucide="play-circle" class="w-5 h-5 mb-1"></i> Hours
+            </button>
+            <button onclick="switchTab('projects')" class="mobile-nav-btn p-2 text-xs font-medium text-slate-600 flex flex-col items-center">
+                <i data-lucide="briefcase" class="w-5 h-5 mb-1"></i> Projects
+            </button>
+            <button onclick="switchTab('reports')" class="mobile-nav-btn p-2 text-xs font-medium text-slate-600 flex flex-col items-center">
+                <i data-lucide="file-text" class="w-5 h-5 mb-1"></i> Reports
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+        <!-- Dynamic Budget Alert Box -->
+        <div id="budget-alerts-container" class="mb-6 space-y-2 no-print"></div>
+
+        <!-- TAB 1: DASHBOARD -->
+        <div id="tab-dashboard" class="tab-content space-y-6">
+            <!-- Stats Grid -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-medium text-slate-500 uppercase tracking-wider">Total Worked</p>
+                        <h3 id="stat-total-hours" class="text-2xl font-bold text-slate-900 mt-1">0.00 h</h3>
+                    </div>
+                    <div class="p-3 bg-blue-50 text-blue-600 rounded-xl">
+                        <i data-lucide="clock" class="w-6 h-6"></i>
+                    </div>
+                </div>
+
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-medium text-slate-500 uppercase tracking-wider">Estimated Income</p>
+                        <h3 id="stat-total-earnings" class="text-2xl font-bold text-emerald-600 mt-1">€ 0,00</h3>
+                    </div>
+                    <div class="p-3 bg-emerald-50 text-emerald-600 rounded-xl">
+                        <i data-lucide="euro" class="w-6 h-6"></i>
+                    </div>
+                </div>
+
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-medium text-slate-500 uppercase tracking-wider">Yet to Invoice</p>
+                        <h3 id="stat-uninvoiced" class="text-2xl font-bold text-amber-600 mt-1">€ 0,00</h3>
+                    </div>
+                    <div class="p-3 bg-amber-50 text-amber-600 rounded-xl">
+                        <i data-lucide="receipt" class="w-6 h-6"></i>
+                    </div>
+                </div>
+
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-medium text-slate-500 uppercase tracking-wider">Active Projects</p>
+                        <h3 id="stat-active-projects" class="text-2xl font-bold text-purple-600 mt-1">0</h3>
+                    </div>
+                    <div class="p-3 bg-purple-50 text-purple-600 rounded-xl">
+                        <i data-lucide="folder-kanban" class="w-6 h-6"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts Section -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                    <h3 class="text-base font-semibold text-slate-900 mb-4 flex items-center gap-2">
+                        <i data-lucide="trending-up" class="w-5 h-5 text-brand-600"></i> Monthly Income
+                    </h3>
+                    <div class="h-64 relative">
+                        <canvas id="chart-earnings"></canvas>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                    <h3 class="text-base font-semibold text-slate-900 mb-4 flex items-center gap-2">
+                        <i data-lucide="pie-chart" class="w-5 h-5 text-brand-600"></i> Hours by Client
+                    </h3>
+                    <div class="h-64 relative">
+                        <canvas id="chart-clients"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Time Entries Table -->
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="p-5 border-b border-slate-200 flex justify-between items-center">
+                    <h3 class="font-semibold text-slate-900">Latest Time Entries</h3>
+                    <button onclick="switchTab('timer')" class="text-sm font-medium text-brand-600 hover:text-brand-700 flex items-center gap-1">
+                        + New Entry
+                    </button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm text-slate-600">
+                        <thead class="bg-slate-50 text-slate-500 uppercase text-xs">
+                            <tr>
+                                <th class="py-3 px-4">Date</th>
+                                <th class="py-3 px-4">Client & Project</th>
+                                <th class="py-3 px-4">Description</th>
+                                <th class="py-3 px-4">Duration</th>
+                                <th class="py-3 px-4">Amount</th>
+                                <th class="py-3 px-4 text-right">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recent-entries-table" class="divide-y divide-slate-100">
+                            <!-- JS populated -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 2: UREN REGISTREREN (TIMER & HANDMATIG) -->
+        <div id="tab-timer" class="tab-content hidden space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Live Timer Card -->
+                <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                    <div>
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-base font-semibold text-slate-900 flex items-center gap-2">
+                                <i data-lucide="timer" class="w-5 h-5 text-brand-600"></i> Live Stopwatch Timer
+                            </h3>
+                            <span class="text-xs bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full font-medium">Real-time</span>
+                        </div>
+
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-medium text-slate-600 mb-1">Select Project *</label>
+                                <select id="timer-project-select" class="w-full rounded-xl border border-slate-300 p-2.5 text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500">
+                                    <!-- JS Populated -->
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-600 mb-1">What are you working on?</label>
+                                <input type="text" id="timer-description" placeholder="e.g. Design work, Meeting, Bug fixes..." class="w-full rounded-xl border border-slate-300 p-2.5 text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500">
+                            </div>
+                        </div>
+
+                        <!-- Big Clock Display -->
+                        <div class="my-8 text-center">
+                            <div id="timer-clock" class="text-5xl font-mono font-bold text-slate-800 tracking-wider">00:00:00</div>
+                            <p id="timer-status" class="text-xs text-slate-400 mt-2">Ready to start</p>
+                        </div>
+                    </div>
+
+                    <!-- Timer Controls -->
+                    <div class="flex gap-3">
+                        <button id="btn-timer-start" onclick="toggleTimer()" class="flex-1 py-3 px-4 bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-xl transition flex items-center justify-center gap-2 shadow-sm">
+                            <i data-lucide="play" class="w-5 h-5"></i> Start Timer
+                        </button>
+                        <button id="btn-timer-reset" onclick="resetTimer()" class="py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl transition flex items-center justify-center gap-2">
+                            <i data-lucide="rotate-ccw" class="w-5 h-5"></i> Reset
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Manual Time Entry Card -->
+                <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                    <h3 class="text-base font-semibold text-slate-900 mb-4 flex items-center gap-2">
+                        <i data-lucide="pen-tool" class="w-5 h-5 text-brand-600"></i> Manual Time Entry
+                    </h3>
+
+                    <form id="form-manual-entry" onsubmit="saveManualEntry(event)" class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-600 mb-1">Project *</label>
+                            <select id="manual-project-select" required class="w-full rounded-xl border border-slate-300 p-2.5 text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500">
+                                <!-- JS Populated -->
+                            </select>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-medium text-slate-600 mb-1">Date *</label>
+                                <input type="date" id="manual-date" required class="w-full rounded-xl border border-slate-300 p-2.5 text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-600 mb-1">Hours *</label>
+                                <input type="number" step="0.25" min="0.1" id="manual-hours" placeholder="e.g. 2.5" required class="w-full rounded-xl border border-slate-300 p-2.5 text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-medium text-slate-600 mb-1">Work description</label>
+                            <textarea id="manual-description" rows="3" placeholder="What exactly did you do?" class="w-full rounded-xl border border-slate-300 p-2.5 text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500"></textarea>
+                        </div>
+
+                        <button type="submit" class="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl transition flex items-center justify-center gap-2 shadow-sm">
+                            <i data-lucide="check-circle" class="w-5 h-5"></i> Save Hours
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 3: KLANTEN & PROJECTEN -->
+        <div id="tab-projects" class="tab-content hidden space-y-6">
+            <!-- Action Buttons -->
+            <div class="flex flex-wrap justify-between items-center gap-4">
+                <h2 class="text-xl font-bold text-slate-900">Manage Clients & Projects</h2>
+                <div class="flex gap-2">
+                    <button onclick="openClientModal()" class="py-2.5 px-4 bg-slate-800 hover:bg-slate-900 text-white font-medium text-sm rounded-xl transition flex items-center gap-1.5 shadow-sm">
+                        <i data-lucide="user-plus" class="w-4 h-4"></i> Add Client
+                    </button>
+                    <button onclick="openProjectModal()" class="py-2.5 px-4 bg-brand-600 hover:bg-brand-700 text-white font-medium text-sm rounded-xl transition flex items-center gap-1.5 shadow-sm">
+                        <i data-lucide="folder-plus" class="w-4 h-4"></i> Add Project
+                    </button>
+                </div>
+            </div>
+
+            <!-- Projects Grid -->
+            <div id="projects-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- JS Populated -->
+            </div>
+        </div>
+
+        <!-- TAB 4: EXPORTEREN & RAPPORT -->
+        <div id="tab-reports" class="tab-content hidden space-y-6">
+            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-6">
+                <div>
+                    <h3 class="text-lg font-bold text-slate-900">Report & Export Filters</h3>
+                    <p class="text-xs text-slate-500">Generate time statements for your invoices or download as CSV data.</p>
+                </div>
+
+                <!-- Filters -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1">Filter by Client</label>
+                        <select id="report-client-filter" onchange="renderReportTable()" class="w-full rounded-xl border border-slate-300 p-2.5 text-sm">
+                            <option value="all">All Clients</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1">From Date</label>
+                        <input type="date" id="report-date-from" onchange="renderReportTable()" class="w-full rounded-xl border border-slate-300 p-2.5 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1">To Date</label>
+                        <input type="date" id="report-date-to" onchange="renderReportTable()" class="w-full rounded-xl border border-slate-300 p-2.5 text-sm">
+                    </div>
+                </div>
+
+                <!-- Export Buttons -->
+                <div class="flex flex-wrap gap-3 pt-2">
+                    <button onclick="exportToCSV()" class="py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium text-sm rounded-xl transition flex items-center gap-2">
+                        <i data-lucide="download" class="w-4 h-4"></i> Export as CSV
+                    </button>
+                    <button onclick="window.print()" class="py-2.5 px-4 bg-brand-600 hover:bg-brand-700 text-white font-medium text-sm rounded-xl transition flex items-center gap-2 shadow-sm">
+                        <i data-lucide="printer" class="w-4 h-4"></i> Print / Save as PDF
+                    </button>
+                </div>
+            </div>
+
+            <!-- Printable Report Table Card -->
+            <div id="printable-area" class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                <div class="flex justify-between items-start border-b border-slate-200 pb-4 mb-4">
+                    <div>
+                        <h2 class="text-xl font-bold text-slate-900">Time Statement & Overview</h2>
+                        <p id="report-period-label" class="text-xs text-slate-500">Generated on: <span id="report-gen-date"></span></p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-xs font-semibold text-slate-400 uppercase">Total Amount Excl. VAT</p>
+                        <p id="report-total-amount" class="text-2xl font-bold text-emerald-600">€ 0,00</p>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm text-slate-600">
+                        <thead class="bg-slate-50 text-slate-700 uppercase text-xs">
+                            <tr>
+                                <th class="py-3 px-4">Date</th>
+                                <th class="py-3 px-4">Client</th>
+                                <th class="py-3 px-4">Project</th>
+                                <th class="py-3 px-4">Description</th>
+                                <th class="py-3 px-4">Hours</th>
+                                <th class="py-3 px-4">Rate</th>
+                                <th class="py-3 px-4 text-right">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody id="report-table-body" class="divide-y divide-slate-100">
+                            <!-- JS Populated -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- MODAL: KLANT TOEVOEGEN / BEWERKEN -->
+    <div id="modal-client" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl border border-slate-200 max-w-md w-full p-6">
+            <h3 class="text-lg font-bold text-slate-900 mb-4">Add New Client</h3>
+            <form id="form-client" onsubmit="saveClient(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-medium text-slate-600 mb-1">Company / Client name *</label>
+                    <input type="text" id="client-name" required placeholder="e.g. Acme Corp" class="w-full rounded-xl border border-slate-300 p-2.5 text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-600 mb-1">Contact person / Email</label>
+                    <input type="text" id="client-contact" placeholder="e.g. contact@acme.com" class="w-full rounded-xl border border-slate-300 p-2.5 text-sm">
+                </div>
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" onclick="closeModal('modal-client')" class="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl text-sm font-medium">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-slate-900 text-white rounded-xl text-sm font-medium">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: PROJECT TOEVOEGEN / BEWERKEN -->
+    <div id="modal-project" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl border border-slate-200 max-w-md w-full p-6">
+            <h3 class="text-lg font-bold text-slate-900 mb-4">Add New Project</h3>
+            <form id="form-project" onsubmit="saveProject(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-medium text-slate-600 mb-1">Select Client *</label>
+                    <select id="project-client-id" required class="w-full rounded-xl border border-slate-300 p-2.5 text-sm">
+                        <!-- JS Populated -->
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-600 mb-1">Project name *</label>
+                    <input type="text" id="project-name" required placeholder="e.g. Website Redesign" class="w-full rounded-xl border border-slate-300 p-2.5 text-sm">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1">Hourly rate (€/hour) *</label>
+                        <input type="number" id="project-rate" step="0.5" min="0" required placeholder="75" class="w-full rounded-xl border border-slate-300 p-2.5 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1">Max Budget (Hours)</label>
+                        <input type="number" id="project-max-hours" step="1" min="0" placeholder="e.g. 40 (optional)" class="w-full rounded-xl border border-slate-300 p-2.5 text-sm">
+                    </div>
+                </div>
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" onclick="closeModal('modal-project')" class="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl text-sm font-medium">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-brand-600 text-white rounded-xl text-sm font-medium">Save Project</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT APP LOGIC -->
+    <script>
+        // --- INITIAL DEMO DATA ---
+        const DEMO_DATA = {
+            clients: [
+                { id: 'c1', name: 'TechStart BV', contact: 'peter@techstart.nl' },
+                { id: 'c2', name: 'Studio Creatief', contact: 'lisa@studiocreatief.be' }
+            ],
+            projects: [
+                { id: 'p1', clientId: 'c1', name: 'E-commerce Webshop', hourlyRate: 75, maxHours: 40 },
+                { id: 'p2', clientId: 'c1', name: 'API Integration', hourlyRate: 85, maxHours: 15 },
+                { id: 'p3', clientId: 'c2', name: 'Brand Identity & Logo', hourlyRate: 65, maxHours: 20 }
+            ],
+            entries: [
+                { id: 'e1', projectId: 'p1', date: '2026-11-02', hours: 6.5, description: 'Built frontend shopping cart' },
+                { id: 'e2', projectId: 'p1', date: '2026-11-04', hours: 8.0, description: 'Integrated Mollie payment system' },
+                { id: 'e3', projectId: 'p2', date: '2026-11-05', hours: 4.0, description: 'Wrote documentation' },
+                { id: 'e4', projectId: 'p3', date: '2026-11-08', hours: 18.5, description: 'Designed brand style and color palette' }
+            ]
+        };
+
+        // --- APP STATE ---
+        let appData = {
+            clients: [],
+            projects: [],
+            entries: []
+        };
+
+        let timerInterval = null;
+        let timerSeconds = 0;
+        let isTimerRunning = false;
+        let chartEarningsInstance = null;
+        let chartClientsInstance = null;
+
+        // --- STORAGE & INIT ---
+        function initApp() {
+            const saved = localStorage.getItem('freelance_flow_data');
+            if (saved) {
+                try {
+                    appData = JSON.parse(saved);
+                } catch (e) {
+                    appData = DEMO_DATA;
+                }
+            } else {
+                appData = DEMO_DATA;
+                saveData();
+            }
+
+            // Set default date for entry forms to today
+            document.getElementById('manual-date').value = new Date().toISOString().split('T')[0];
+            document.getElementById('report-gen-date').textContent = new Date().toLocaleDateString('en-GB');
+
+            lucide.createIcons();
+            populateSelects();
+            renderDashboard();
+            renderProjectsGrid();
+            renderReportTable();
+        }
+
+        function saveData() {
+            localStorage.setItem('freelance_flow_data', JSON.stringify(appData));
+        }
+
+        // --- TAB NAVIGATION ---
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('text-brand-600', 'bg-white', 'shadow-sm');
+                btn.classList.add('text-slate-600');
+            });
+            const activeBtn = document.getElementById(`nav-${tabId}`);
+            if (activeBtn) {
+                activeBtn.classList.add('text-brand-600', 'bg-white', 'shadow-sm');
+                activeBtn.classList.remove('text-slate-600');
+            }
+
+            if (tabId === 'dashboard') {
+                renderDashboard();
+            } else if (tabId === 'projects') {
+                renderProjectsGrid();
+            } else if (tabId === 'reports') {
+                renderReportTable();
+            }
+        }
+
+        // --- HELPER FUNCTIONS ---
+        function formatMoney(amount) {
+            return new Intl.NumberFormat('en-IE', { style: 'currency', currency: 'EUR' }).format(amount);
+        }
+
+        function getProjectById(id) {
+            return appData.projects.find(p => p.id === id) || { name: 'Unknown', hourlyRate: 0, clientId: '' };
+        }
+
+        function getClientById(id) {
+            return appData.clients.find(c => c.id === id) || { name: 'Unknown Client' };
+        }
+
+        function getProjectHours(projectId) {
+            return appData.entries
+                .filter(e => e.projectId === projectId)
+                .reduce((sum, e) => sum + parseFloat(e.hours), 0);
+        }
+
+        function populateSelects() {
+            const timerSelect = document.getElementById('timer-project-select');
+            const manualSelect = document.getElementById('manual-project-select');
+            const projectClientSelect = document.getElementById('project-client-id');
+            const reportClientSelect = document.getElementById('report-client-filter');
+
+            const projectOptions = appData.projects.map(p => {
+                const client = getClientById(p.clientId);
+                return `<option value="${p.id}">${client.name} - ${p.name} (€${p.hourlyRate}/h)</option>`;
+            }).join('');
+
+            timerSelect.innerHTML = projectOptions || '<option value="">No projects available</option>';
+            manualSelect.innerHTML = projectOptions || '<option value="">No projects available</option>';
+
+            projectClientSelect.innerHTML = appData.clients.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+            
+            reportClientSelect.innerHTML = '<option value="all">All Clients</option>' + 
+                appData.clients.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+        }
+
+        // --- DASHBOARD & CHARTS ---
+        function renderDashboard() {
+            let totalHours = 0;
+            let totalEarnings = 0;
+            const clientHoursMap = {};
+
+            appData.entries.forEach(e => {
+                const hours = parseFloat(e.hours);
+                const proj = getProjectById(e.projectId);
+                const earnings = hours * proj.hourlyRate;
+
+                totalHours += hours;
+                totalEarnings += earnings;
+
+                const client = getClientById(proj.clientId);
+                clientHoursMap[client.name] = (clientHoursMap[client.name] || 0) + hours;
+            });
+
+            document.getElementById('stat-total-hours').textContent = `${totalHours.toFixed(2)} h`;
+            document.getElementById('stat-total-earnings').textContent = formatMoney(totalEarnings);
+            document.getElementById('stat-uninvoiced').textContent = formatMoney(totalEarnings);
+            document.getElementById('stat-active-projects').textContent = appData.projects.length;
+
+            renderBudgetAlerts();
+            renderRecentEntries();
+            renderCharts(clientHoursMap);
+        }
+
+        function renderBudgetAlerts() {
+            const container = document.getElementById('budget-alerts-container');
+            container.innerHTML = '';
+
+            appData.projects.forEach(p => {
+                if (!p.maxHours) return;
+                const used = getProjectHours(p.id);
+                const pct = (used / p.maxHours) * 100;
+
+                if (pct >= 80) {
+                    const client = getClientById(p.clientId);
+                    const isOver = pct >= 100;
+                    const alertHtml = `
+                        <div class="p-4 rounded-xl border ${isOver ? 'bg-red-50 border-red-200 text-red-800' : 'bg-amber-50 border-amber-200 text-amber-800'} flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <i data-lucide="${isOver ? 'alert-octagon' : 'alert-triangle'}" class="w-5 h-5 flex-shrink-0"></i>
+                                <div>
+                                    <p class="text-xs font-bold uppercase tracking-wider">${isOver ? 'Budget Exceeded!' : 'Budget Warning'}</p>
+                                    <p class="text-sm font-medium">Project <strong>${p.name}</strong> (${client.name}) is at <strong>${pct.toFixed(0)}%</strong> of the maximum hours (${used.toFixed(1)} / ${p.maxHours} h).</p>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    container.innerHTML += alertHtml;
+                }
+            });
+            lucide.createIcons();
+        }
+
+        function renderRecentEntries() {
+            const tbody = document.getElementById('recent-entries-table');
+            const sorted = [...appData.entries].sort((a,b) => new Date(b.date) - new Date(a.date)).slice(0, 5);
+
+            if (sorted.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="py-6 text-center text-slate-400">No hours logged yet.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = sorted.map(e => {
+                const proj = getProjectById(e.projectId);
+                const client = getClientById(proj.clientId);
+                const earnings = parseFloat(e.hours) * proj.hourlyRate;
+
+                return `
+                    <tr class="hover:bg-slate-50 transition">
+                        <td class="py-3 px-4 font-medium text-slate-900">${e.date}</td>
+                        <td class="py-3 px-4">
+                            <div class="font-medium text-slate-800">${proj.name}</div>
+                            <div class="text-xs text-slate-400">${client.name}</div>
+                        </td>
+                        <td class="py-3 px-4 text-slate-600 max-w-xs truncate">${e.description || '-'}</td>
+                        <td class="py-3 px-4 font-semibold text-slate-800">${parseFloat(e.hours).toFixed(2)} h</td>
+                        <td class="py-3 px-4 text-emerald-600 font-semibold">${formatMoney(earnings)}</td>
+                        <td class="py-3 px-4 text-right">
+                            <button onclick="deleteEntry('${e.id}')" class="text-slate-400 hover:text-red-600 transition p-1">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+            lucide.createIcons();
+        }
+
+        function renderCharts(clientHoursMap) {
+            // Chart 1: Client distribution
+            const ctxClients = document.getElementById('chart-clients').getContext('2d');
+            if (chartClientsInstance) chartClientsInstance.destroy();
+
+            chartClientsInstance = new Chart(ctxClients, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(clientHoursMap),
+                    datasets: [{
+                        data: Object.values(clientHoursMap),
+                        backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom' } }
+                }
+            });
+
+            // Chart 2: Earnings
+            const ctxEarnings = document.getElementById('chart-earnings').getContext('2d');
+            if (chartEarningsInstance) chartEarningsInstance.destroy();
+
+            chartEarningsInstance = new Chart(ctxEarnings, {
+                type: 'bar',
+                data: {
+                    labels: ['Nov 2026'],
+                    datasets: [{
+                        label: 'Income (€)',
+                        data: [appData.entries.reduce((sum, e) => sum + (e.hours * getProjectById(e.projectId).hourlyRate), 0)],
+                        backgroundColor: '#3b82f6',
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: { y: { beginAtZero: true } }
+                }
+            });
+        }
+
+        // --- TIMER LOGIC ---
+        function toggleTimer() {
+            const btn = document.getElementById('btn-timer-start');
+            const badge = document.getElementById('quick-timer-badge');
+
+            if (!isTimerRunning) {
+                isTimerRunning = true;
+                timerInterval = setInterval(() => {
+                    timerSeconds++;
+                    updateTimerClock();
+                }, 1000);
+                btn.innerHTML = `<i data-lucide="pause" class="w-5 h-5"></i> Pause Timer`;
+                btn.classList.replace('bg-brand-600', 'bg-amber-600');
+                btn.classList.replace('hover:bg-brand-700', 'hover:bg-amber-700');
+                badge.classList.remove('hidden');
+                badge.classList.add('flex');
+            } else {
+                isTimerRunning = false;
+                clearInterval(timerInterval);
+                btn.innerHTML = `<i data-lucide="play" class="w-5 h-5"></i> Resume / Save`;
+                btn.classList.replace('bg-amber-600', 'bg-emerald-600');
+                btn.classList.replace('hover:bg-amber-700', 'hover:bg-emerald-700');
+                showSaveTimerOption();
+            }
+            lucide.createIcons();
+        }
+
+        function updateTimerClock() {
+            const hrs = Math.floor(timerSeconds / 3600);
+            const mins = Math.floor((timerSeconds % 3600) / 60);
+            const secs = timerSeconds % 60;
+            const formatted = `${String(hrs).padStart(2,'0')}:${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')}`;
+
+            document.getElementById('timer-clock').textContent = formatted;
+            document.getElementById('quick-timer-display').textContent = formatted;
+        }
+
+        function showSaveTimerOption() {
+            if (timerSeconds < 60) return; // ignore tiny durations
+            const hoursDecimal = (timerSeconds / 3600).toFixed(2);
+            if (confirm(`Timer paused at ${hoursDecimal} hours. Do you want to save this time now?`)) {
+                const projectId = document.getElementById('timer-project-select').value;
+                const desc = document.getElementById('timer-description').value;
+                
+                appData.entries.push({
+                    id: 'e' + Date.now(),
+                    projectId: projectId,
+                    date: new Date().toISOString().split('T')[0],
+                    hours: parseFloat(hoursDecimal),
+                    description: desc
+                });
+
+                saveData();
+                resetTimer();
+                alert('Time saved successfully!');
+                switchTab('dashboard');
+            }
+        }
+
+        function resetTimer() {
+            isTimerRunning = false;
+            clearInterval(timerInterval);
+            timerSeconds = 0;
+            updateTimerClock();
+
+            const btn = document.getElementById('btn-timer-start');
+            btn.innerHTML = `<i data-lucide="play" class="w-5 h-5"></i> Start Timer`;
+            btn.className = "flex-1 py-3 px-4 bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-xl transition flex items-center justify-center gap-2 shadow-sm";
+            document.getElementById('quick-timer-badge').classList.add('hidden');
+            lucide.createIcons();
+        }
+
+        // --- MANUAL TIME ENTRY ---
+        function saveManualEntry(e) {
+            e.preventDefault();
+            const projectId = document.getElementById('manual-project-select').value;
+            const date = document.getElementById('manual-date').value;
+            const hours = parseFloat(document.getElementById('manual-hours').value);
+            const description = document.getElementById('manual-description').value;
+
+            appData.entries.push({
+                id: 'e' + Date.now(),
+                projectId,
+                date,
+                hours,
+                description
+            });
+
+            saveData();
+            document.getElementById('form-manual-entry').reset();
+            document.getElementById('manual-date').value = new Date().toISOString().split('T')[0];
+            alert('Hours saved successfully!');
+            switchTab('dashboard');
+        }
+
+        function deleteEntry(id) {
+            if (confirm('Are you sure you want to delete this time entry?')) {
+                appData.entries = appData.entries.filter(e => e.id !== id);
+                saveData();
+                renderDashboard();
+            }
+        }
+
+        // --- PROJECTS & CLIENTS GRID ---
+        function renderProjectsGrid() {
+            const grid = document.getElementById('projects-grid');
+
+            if (appData.projects.length === 0) {
+                grid.innerHTML = `<div class="col-span-full py-12 text-center text-slate-400">No projects yet. Click 'Add Project'.</div>`;
+                return;
+            }
+
+            grid.innerHTML = appData.projects.map(p => {
+                const client = getClientById(p.clientId);
+                const usedHours = getProjectHours(p.id);
+                const pct = p.maxHours ? Math.min(100, (usedHours / p.maxHours) * 100) : 0;
+                const totalEarned = usedHours * p.hourlyRate;
+
+                return `
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between space-y-4">
+                        <div>
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <span class="text-xs font-semibold text-brand-600 bg-brand-50 px-2.5 py-1 rounded-md">${client.name}</span>
+                                    <h4 class="text-base font-bold text-slate-900 mt-2">${p.name}</h4>
+                                </div>
+                                <div class="text-right">
+                                    <span class="text-base font-bold text-slate-900">€${p.hourlyRate}</span>
+                                    <span class="text-xs text-slate-400 block">/ hour</span>
+                                </div>
+                            </div>
+
+                            ${p.maxHours ? `
+                                <div class="mt-4 space-y-1.5">
+                                    <div class="flex justify-between text-xs font-medium">
+                                        <span class="text-slate-500">Budget Progress</span>
+                                        <span class="${pct >= 100 ? 'text-red-600 font-bold' : 'text-slate-700'}">${usedHours.toFixed(1)} / ${p.maxHours} h (${pct.toFixed(0)}%)</span>
+                                    </div>
+                                    <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                                        <div class="h-full ${pct >= 100 ? 'bg-red-500' : pct >= 80 ? 'bg-amber-500' : 'bg-brand-600'} transition-all" style="width: ${pct}%"></div>
+                                    </div>
+                                </div>
+                            ` : ''}
+                        </div>
+
+                        <div class="pt-3 border-t border-slate-100 flex justify-between items-center text-xs">
+                            <div>
+                                <span class="text-slate-400 block">Total Value</span>
+                                <span class="font-bold text-emerald-600 text-sm">${formatMoney(totalEarned)}</span>
+                            </div>
+                            <button onclick="deleteProject('${p.id}')" class="text-slate-400 hover:text-red-600 transition p-1">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            lucide.createIcons();
+        }
+
+        // --- MODALS ---
+        function openClientModal() { document.getElementById('modal-client').classList.remove('hidden'); }
+        function openProjectModal() { 
+            populateSelects();
+            document.getElementById('modal-project').classList.remove('hidden'); 
+        }
+        function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+        function saveClient(e) {
+            e.preventDefault();
+            const name = document.getElementById('client-name').value;
+            const contact = document.getElementById('client-contact').value;
+
+            appData.clients.push({ id: 'c' + Date.now(), name, contact });
+            saveData();
+            closeModal('modal-client');
+            document.getElementById('form-client').reset();
+            populateSelects();
+            renderDashboard();
+        }
+
+        function saveProject(e) {
+            e.preventDefault();
+            const clientId = document.getElementById('project-client-id').value;
+            const name = document.getElementById('project-name').value;
+            const hourlyRate = parseFloat(document.getElementById('project-rate').value);
+            const maxHours = document.getElementById('project-max-hours').value ? parseFloat(document.getElementById('project-max-hours').value) : null;
+
+            appData.projects.push({ id: 'p' + Date.now(), clientId, name, hourlyRate, maxHours });
+            saveData();
+            closeModal('modal-project');
+            document.getElementById('form-project').reset();
+            populateSelects();
+            renderProjectsGrid();
+        }
+
+        function deleteProject(id) {
+            if (confirm('Delete project and its logged hours?')) {
+                appData.projects = appData.projects.filter(p => p.id !== id);
+                appData.entries = appData.entries.filter(e => e.projectId !== id);
+                saveData();
+                renderProjectsGrid();
+                renderDashboard();
+            }
+        }
+
+        // --- REPORTS & EXPORT ---
+        function renderReportTable() {
+            const clientFilter = document.getElementById('report-client-filter').value;
+            const dateFrom = document.getElementById('report-date-from').value;
+            const dateTo = document.getElementById('report-date-to').value;
+
+            let filtered = appData.entries.filter(e => {
+                const proj = getProjectById(e.projectId);
+                if (clientFilter !== 'all' && proj.clientId !== clientFilter) return false;
+                if (dateFrom && e.date < dateFrom) return false;
+                if (dateTo && e.date > dateTo) return false;
+                return true;
+            });
+
+            const tbody = document.getElementById('report-table-body');
+            let grandTotal = 0;
+
+            tbody.innerHTML = filtered.map(e => {
+                const proj = getProjectById(e.projectId);
+                const client = getClientById(proj.clientId);
+                const total = e.hours * proj.hourlyRate;
+                grandTotal += total;
+
+                return `
+                    <tr>
+                        <td class="py-3 px-4 font-medium text-slate-900">${e.date}</td>
+                        <td class="py-3 px-4">${client.name}</td>
+                        <td class="py-3 px-4 font-medium">${proj.name}</td>
+                        <td class="py-3 px-4 text-slate-500">${e.description || '-'}</td>
+                        <td class="py-3 px-4 font-semibold">${e.hours.toFixed(2)} h</td>
+                        <td class="py-3 px-4">€ ${proj.hourlyRate}</td>
+                        <td class="py-3 px-4 text-right font-bold text-slate-900">${formatMoney(total)}</td>
+                    </tr>
+                `;
+            }).join('');
+
+            document.getElementById('report-total-amount').textContent = formatMoney(grandTotal);
+        }
+
+        function exportToCSV() {
+            let csvContent = "data:text/csv;charset=utf-8,Date,Client,Project,Description,Hours,Rate,Total\n";
+            appData.entries.forEach(e => {
+                const proj = getProjectById(e.projectId);
+                const client = getClientById(proj.clientId);
+                const total = e.hours * proj.hourlyRate;
+                csvContent += `"${e.date}","${client.name}","${proj.name}","${e.description || ''}",${e.hours},${proj.hourlyRate},${total}\n`;
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `FreelanceFlow_Hours_Export_${new Date().toISOString().split('T')[0]}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // --- STARTUP ---
+        window.onload = initApp;
+
+        // --- PWA: register service worker (works over https:// or localhost) ---
+        if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js').catch(err => console.warn('SW registration failed:', err));
+            });
+        }
+    </script>
+
+    <div id="pwa-tools" class="no-print" style="position:fixed;right:16px;bottom:16px;z-index:60;display:flex;gap:8px;align-items:center">
+        <span id="connection-status" style="background:#fff;border:1px solid #cbd5e1;border-radius:999px;padding:8px 12px;font:12px Inter,sans-serif;color:#475569;box-shadow:0 2px 8px #0001">Online</span>
+        <button id="install-app-button" type="button" style="display:none;background:#2563eb;color:#fff;border:0;border-radius:999px;padding:10px 14px;font:600 13px Inter,sans-serif;box-shadow:0 2px 8px #0002">
+            Install app
+        </button>
+    </div>
+
+    <script>
+      // PWA install prompt (supported browsers only).
+      let deferredInstallPrompt = null;
+      const installButton = document.getElementById('install-app-button');
+      const connectionStatus = document.getElementById('connection-status');
+
+      function updateConnectionStatus() {
+        const online = navigator.onLine;
+        connectionStatus.textContent = online ? 'Online' : 'Offline';
+        connectionStatus.style.color = online ? '#047857' : '#b45309';
+        connectionStatus.style.borderColor = online ? '#a7f3d0' : '#fcd34d';
+      }
+      window.addEventListener('online', updateConnectionStatus);
+      window.addEventListener('offline', updateConnectionStatus);
+      updateConnectionStatus();
+
+      window.addEventListener('beforeinstallprompt', (event) => {
+        event.preventDefault();
+        deferredInstallPrompt = event;
+        installButton.style.display = 'inline-flex';
+      });
+
+      installButton.addEventListener('click', async () => {
+        if (!deferredInstallPrompt) return;
+        deferredInstallPrompt.prompt();
+        await deferredInstallPrompt.userChoice;
+        deferredInstallPrompt = null;
+        installButton.style.display = 'none';
+      });
+
+      window.addEventListener('appinstalled', () => {
+        installButton.style.display = 'none';
+      });
+    </script>
+</body>
+</html>
