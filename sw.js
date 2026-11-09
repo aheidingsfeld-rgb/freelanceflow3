@@ -1,11 +1,9 @@
-const CACHE_NAME = 'freelanceflow-v3';
+const CACHE_NAME = 'freelanceflow-v4';
 const APP_SHELL = [
   './',
   './index.html',
   './manifest.json',
   './icon.svg',
-  './icons/icon-192.png',
-  './icons/icon-512.png'
 ];
 
 self.addEventListener('install', (event) => {
