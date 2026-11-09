@@ -9,10 +9,22 @@ window.submitAuth = async () => { const email=el("auth-email").value.trim(), pas
 window.resetAuthPassword = async () => { const email=el("auth-email").value.trim(); if(!email)return authMsg("Enter your email first.",true); const {error}=await supabase.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname}); authMsg(error?error.message:"If an account exists, a reset email has been sent.",!!error); };
 window.signOutFreelanceFlow = async () => { const {error}=await supabase.auth.signOut(); if(error)alert(error.message); };
 function startRealtimeSync() {
- if(refreshListenersInstalled) return;
- refreshListenersInstalled = true;
- window.addEventListener("focus",()=>{ if(user) loadCloud().catch(e=>console.warn("Cloud refresh failed",e)); });
- document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible"&&user) loadCloud().catch(e=>console.warn("Cloud refresh failed",e)); });
+ if(syncChannel) supabase.removeChannel(syncChannel);
+ syncChannel = supabase.channel("freelanceflow-sync-" + user.id);
+ for (const table of ["clients", "projects", "time_entries", "timer_sessions"]) {
+  syncChannel.on("postgres_changes", { event: "*", schema: "public", table, filter: "user_id=eq." + user.id }, payload => {
+   if (!user) return;
+   if (table === "timer_sessions") {
+    restoreTimer().catch(error => console.warn("Timer sync failed", error));
+   } else {
+    loadCloud().catch(error => console.warn("Cloud sync failed", error));
+   }
+  });
+ }
+ syncChannel.subscribe(status => {
+  const badge = document.getElementById("connection-status");
+  if (badge) badge.title = status === "SUBSCRIBED" ? "Realtime cloud sync connected" : "Cloud sync: " + status;
+ });
 }
 async function loadCloud() {
  const [c,p,t]=await Promise.all([supabase.from("clients").select("*").order("created_at"),supabase.from("projects").select("*").order("created_at"),supabase.from("time_entries").select("*").order("work_date",{ascending:false})]);
