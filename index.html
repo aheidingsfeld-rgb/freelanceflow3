@@ -88,6 +88,9 @@
                     <button onclick="switchTab('reports')" id="nav-reports" class="tab-btn px-4 py-2 text-sm font-medium rounded-lg text-slate-600 hover:text-slate-900 transition">
                         <i data-lucide="file-text" class="w-4 h-4 inline mr-1.5"></i> Export & Report
                     </button>
+                    <button onclick="switchTab('billing')" id="nav-billing" class="tab-btn px-4 py-2 text-sm font-medium rounded-lg text-slate-600 hover:text-slate-900 transition">
+                        <i data-lucide="credit-card" class="w-4 h-4 inline mr-1.5"></i> Subscription
+                    </button>
                 </nav>
 
                 <!-- Quick Action Timer Toggle -->
@@ -115,6 +118,9 @@
             </button>
             <button onclick="switchTab('reports')" class="mobile-nav-btn p-2 text-xs font-medium text-slate-600 flex flex-col items-center">
                 <i data-lucide="file-text" class="w-5 h-5 mb-1"></i> Reports
+            </button>
+            <button onclick="switchTab('billing')" class="mobile-nav-btn p-2 text-xs font-medium text-slate-600 flex flex-col items-center">
+                <i data-lucide="credit-card" class="w-5 h-5 mb-1"></i> Pro
             </button>
         </div>
     </header>
@@ -390,6 +396,48 @@
                         </tbody>
                     </table>
                 </div>
+            </div>
+        </div>
+
+    
+        <!-- TAB 5: SUBSCRIPTION & BILLING -->
+        <div id="tab-billing" class="tab-content hidden space-y-6">
+            <div class="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm">
+                <div class="flex flex-wrap items-start justify-between gap-4">
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-wide text-brand-600">FreelanceFlow plans</p>
+                        <h2 class="text-2xl font-bold text-slate-900 mt-1">Your subscription</h2>
+                        <p class="text-sm text-slate-500 mt-2">Manage your plan, billing and payment method.</p>
+                    </div>
+                    <span id="billing-status-badge" class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">Free plan</span>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mt-7">
+                    <div class="rounded-2xl border border-slate-200 p-5">
+                        <h3 class="font-bold text-slate-900">Free</h3>
+                        <p class="text-3xl font-bold text-slate-900 mt-2">€0<span class="text-sm font-medium text-slate-500"> / month</span></p>
+                        <p class="text-sm text-slate-500 mt-2">Your current basic workspace.</p>
+                        <p class="text-xs text-slate-400 mt-4">Keep using the free plan without a payment method.</p>
+                    </div>
+                    <div class="rounded-2xl border-2 border-brand-500 p-5">
+                        <div class="flex justify-between items-center gap-2">
+                            <h3 class="font-bold text-slate-900">FreelanceFlow Pro</h3>
+                            <span class="rounded-full bg-brand-50 text-brand-700 px-2.5 py-1 text-xs font-semibold">7-day free trial</span>
+                        </div>
+                        <p class="text-3xl font-bold text-slate-900 mt-2">€4.99<span class="text-sm font-medium text-slate-500"> / month</span></p>
+                        <p class="text-sm text-slate-500 mt-2">Full access to FreelanceFlow Pro.</p>
+                        <p class="text-xs text-slate-500 mt-4">Belgium only during the test rollout. Price intended to include 21% VAT.</p>
+                        <button id="billing-upgrade-button" onclick="openProCheckout()" class="w-full mt-5 py-3 px-4 bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-xl">Start 7-day free trial</button>
+                    </div>
+                </div>
+                <div id="billing-current-plan" class="mt-6 rounded-xl bg-slate-50 border border-slate-200 p-4 text-sm text-slate-600">Loading your subscription…</div>
+                <div class="flex flex-wrap gap-3 mt-5">
+                    <button id="billing-portal-button" onclick="openBillingPortal()" class="hidden py-2.5 px-4 border border-slate-300 hover:bg-slate-50 text-slate-700 font-medium text-sm rounded-xl">Manage subscription & payment method</button>
+                    <button onclick="refreshBilling()" class="py-2.5 px-4 border border-slate-300 hover:bg-slate-50 text-slate-700 font-medium text-sm rounded-xl">Refresh status</button>
+                </div>
+                <p id="billing-message" role="status" aria-live="polite" class="mt-4 text-sm text-slate-500"></p>
+            </div>
+            <div class="bg-slate-50 border border-slate-200 rounded-2xl p-5 text-xs text-slate-500">
+                Payments are currently in Stripe test mode. No real charges are made. The checkout will remain disabled until the staging Stripe key, webhook signing secret and Belgian VAT rate are configured.
             </div>
         </div>
 
