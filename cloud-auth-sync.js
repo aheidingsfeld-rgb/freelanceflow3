@@ -69,4 +69,51 @@ window.deleteEntry=async id=>{if(!confirm("Delete this time entry?"))return;cons
 window.deleteProject=async id=>{if(!confirm("Delete this project? Its time entries must be deleted first."))return;const {error}=await supabase.from("projects").delete().eq("id",id);if(error)return alert(error.message);await loadCloud();};
 window.onload=async()=>{el("manual-date").value=new Date().toISOString().slice(0,10);el("report-gen-date").textContent=new Date().toLocaleDateString("en-GB");lucide.createIcons();const {data,error}=await supabase.auth.getSession();if(error)console.error(error);if(!data.session){showAuth(true);window.setAuthMode("login");return;}user=data.session.user;showAuth(false);try{await importLocal();await loadCloud();await restoreTimer();}catch(e){alert("Cloud data could not be loaded: "+e.message);showAuth(true);}};
 supabase.auth.onAuthStateChange((event,session)=>{if(event==="SIGNED_IN"&&session&&!user){user=session.user;setTimeout(async()=>{showAuth(false);try{await importLocal();await loadCloud();await restoreTimer();}catch(e){authMsg(e.message,true);}},0);}if(event==="SIGNED_OUT"){user=null;if(syncChannel){supabase.removeChannel(syncChannel);syncChannel=null;}resetTimerUI();showAuth(true);window.setAuthMode("login");}});
+
+const BILLING_FUNCTIONS = { checkout: "create-checkout-session", portal: "create-portal-session" };
+window.refreshBilling = async () => {
+ const msg = el("billing-message"), current = el("billing-current-plan");
+ if (!user) { if(msg)msg.textContent="Sign in to view your subscription."; return; }
+ if(msg)msg.textContent="Refreshing subscription…";
+ const {data,error}=await supabase.from("subscriptions").select("*").eq("user_id",user.id).maybeSingle();
+ if(error){if(msg)msg.textContent="Could not load subscription: "+error.message;return;}
+ const status=data?.status||"free", plan=data?.plan_key||"free";
+ const badge=el("billing-status-badge"), portal=el("billing-portal-button"), upgrade=el("billing-upgrade-button");
+ if(badge){badge.textContent=status==="trialing"?"Free trial":status==="active"?"Pro active":status==="past_due"?"Payment issue":status==="canceled"?"Canceled":"Free plan";}
+ if(current){
+  const labels={free:"You are currently on the Free plan.",trialing:"Your Pro free trial is active.",active:"Your FreelanceFlow Pro subscription is active.",past_due:"Your latest payment needs attention. Update your payment method in the billing portal.",canceled:"Your Pro subscription is canceled.",unpaid:"Your subscription is unpaid.",incomplete:"Checkout has not been completed yet."};
+  let extra="";
+  if(data?.trial_end)extra=" Trial ends: "+new Date(data.trial_end).toLocaleDateString();
+  if(data?.current_period_end)extra=" Current period ends: "+new Date(data.current_period_end).toLocaleDateString();
+  current.textContent=(labels[status]||"Subscription status: "+status)+extra;
+ }
+ if(portal)portal.classList.toggle("hidden",!data?.stripe_customer_id);
+ if(upgrade)upgrade.classList.toggle("hidden",["trialing","active"].includes(status));
+ if(msg)msg.textContent="Subscription details updated.";
+};
+window.openProCheckout = async () => {
+ const msg=el("billing-message"), button=el("billing-upgrade-button");
+ if(!user){if(msg)msg.textContent="Please sign in first.";return;}
+ if(button){button.disabled=true;button.textContent="Opening secure checkout…";}
+ if(msg)msg.textContent="Connecting to Stripe test checkout…";
+ try{
+  const {data,error}=await supabase.functions.invoke(BILLING_FUNCTIONS.checkout,{body:{}});
+  if(error)throw error;
+  if(!data?.url)throw new Error(data?.error||"Checkout URL was not returned.");
+  location.href=data.url;
+ }catch(e){if(msg)msg.textContent=e.message+" If setup is incomplete, add the staging Stripe secrets in Supabase first.";}
+ finally{if(button){button.disabled=false;button.textContent="Start 7-day free trial";}}
+};
+window.openBillingPortal = async () => {
+ const msg=el("billing-message"), button=el("billing-portal-button");
+ if(button){button.disabled=true;button.textContent="Opening billing portal…";}
+ try{
+  const {data,error}=await supabase.functions.invoke(BILLING_FUNCTIONS.portal,{body:{}});
+  if(error)throw error;
+  if(!data?.url)throw new Error(data?.error||"Portal URL was not returned.");
+  location.href=data.url;
+ }catch(e){if(msg)msg.textContent=e.message;}
+ finally{if(button){button.disabled=false;button.textContent="Manage subscription & payment method";}}
+};
+
 window.escapeHTML = value => String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
