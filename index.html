@@ -581,6 +581,8 @@
                 renderProjectsGrid();
             } else if (tabId === 'reports') {
                 renderReportTable();
+            } else if (tabId === 'billing' && typeof window.refreshBilling === 'function') {
+                window.refreshBilling();
             }
         }
 
