@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-const supabase = createClient("https://odyfjdhumgzoslpwkgev.supabase.co", "sb_publishable_LoOkhFOYU-zSlvFo-EgUuw_cy1DVdlg", { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
+const supabase = createClient("https://gycjkrhdyjydxfwwrcyn.supabase.co", "sb_publishable_tzqF-UQKr-3DM3v5a1NjcA_DBvzlRO4", { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
 let user = null, cloudTimer = null, timerStarted = null, timerElapsed = 0, ticker = null, syncChannel = null, refreshListenersInstalled = false;
 const el = id => document.getElementById(id);
 function authMsg(msg, error=false) { el("auth-message").textContent=msg; el("auth-message").className=error?"mt-3 text-sm text-red-600":"mt-3 text-sm text-emerald-700"; }
