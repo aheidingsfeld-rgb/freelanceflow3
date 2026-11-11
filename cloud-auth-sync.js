@@ -79,6 +79,7 @@ window.refreshBilling = async () => {
  if(error){if(msg)msg.textContent="Could not load subscription: "+error.message;return;}
  const status=data?.status||"free", plan=data?.plan_key||"free";
  window.freelanceFlowPlan = ["active","trialing"].includes(status) ? status : "free";
+ if (document.getElementById("tab-analytics") && !document.getElementById("tab-analytics").classList.contains("hidden")) window.renderAdvancedAnalytics?.();
  const badge=el("billing-status-badge"), portal=el("billing-portal-button"), upgrade=el("billing-upgrade-button");
  if(badge){badge.textContent=status==="trialing"?"Free trial":status==="active"?"Pro active":status==="past_due"?"Payment issue":status==="canceled"?"Canceled":"Free plan";}
  if(current){
