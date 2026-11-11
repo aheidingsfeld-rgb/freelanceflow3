@@ -7,6 +7,45 @@ function showAuth(show) { el("auth-screen").classList.toggle("hidden",!show); do
 let currentAuthMode = "login";
 window.setAuthMode = mode => { currentAuthMode=mode; const signup=mode==="signup"; el("auth-title").textContent=signup?"Create your account":"Welcome back"; el("auth-subtitle").textContent=signup?"Start tracking your freelance work.":"Sign in to access your workspace."; el("auth-submit").textContent=signup?"Create account":"Sign in"; el("auth-mode-toggle").textContent=signup?"Already have an account? Sign in":"New to FreelanceFlow? Create account"; el("auth-mode-toggle").dataset.mode=signup?"login":"signup"; authMsg(""); };
 let authSubmitting = false;
+
+window.loadCloud = async () => {
+ if (!user) throw new Error("Your session has expired. Please sign in again.");
+ const [clientsResult, projectsResult, entriesResult] = await Promise.all([
+  supabase.from("clients").select("id,name,contact,notes,created_at").eq("user_id", user.id).order("created_at", {ascending:true}),
+  supabase.from("projects").select("id,client_id,name,hourly_rate,max_hours,currency,created_at").eq("user_id", user.id).order("created_at", {ascending:true}),
+  supabase.from("time_entries").select("id,project_id,work_date,hours,description,source,created_at").eq("user_id", user.id).order("work_date", {ascending:false})
+ ]);
+ for (const result of [clientsResult, projectsResult, entriesResult]) {
+  if (result.error) throw result.error;
+ }
+ appData.clients = (clientsResult.data || []).map(c => ({id:c.id,name:c.name,contact:c.contact||"",notes:c.notes||""}));
+ appData.projects = (projectsResult.data || []).map(p => ({id:p.id,clientId:p.client_id,name:p.name,hourlyRate:Number(p.hourly_rate)||0,maxHours:p.max_hours==null?null:Number(p.max_hours),currency:p.currency||"EUR"}));
+ appData.entries = (entriesResult.data || []).map(e => ({id:e.id,projectId:e.project_id,date:e.work_date,hours:Number(e.hours)||0,description:e.description||"",source:e.source||"manual"}));
+ if (typeof populateSelects === "function") populateSelects();
+ if (typeof renderDashboard === "function") renderDashboard();
+ if (typeof renderProjectsGrid === "function") renderProjectsGrid();
+ if (typeof renderReportTable === "function") renderReportTable();
+ if (typeof window.renderAdvancedAnalytics === "function") window.renderAdvancedAnalytics();
+};
+window.restoreTimer = async () => {
+ if (!user) return;
+ const {data,error} = await supabase.from("timer_sessions").select("id,project_id,description,started_at,elapsed_seconds,status").eq("user_id",user.id).in("status",["running","paused"]).order("created_at",{ascending:false}).limit(1).maybeSingle();
+ if (error) throw error;
+ if (!data) { cloudTimer=null; timerStarted=null; timerElapsed=0; return; }
+ cloudTimer=data;
+ timerElapsed=Number(data.elapsed_seconds)||0;
+ timerStarted=data.status==="running" ? new Date(data.started_at).getTime() : null;
+};
+window.resetTimerUI = () => {
+ cloudTimer=null; timerStarted=null; timerElapsed=0;
+ if (typeof stopTicker === "function") stopTicker();
+ const badge=el("quick-timer-badge");
+ if (badge) badge.classList.add("hidden");
+ const display=el("quick-timer-display");
+ if (display) display.textContent="00:00:00";
+ if (typeof isTimerRunning !== "undefined") isTimerRunning=false;
+};
+
 let workspacePromise = null;
 async function enterWorkspace(session) {
  if (!session?.user) throw new Error("The login response did not contain a user session.");
@@ -15,9 +54,10 @@ async function enterWorkspace(session) {
  showAuth(false);
  workspacePromise = (async () => {
   try {
-   await importLocal();
-   await loadCloud();
-   await restoreTimer();
+   if (typeof window.initApp !== "function") throw new Error("The workspace initializer is unavailable. Please refresh the page.");
+   window.initApp();
+   await window.loadCloud();
+   await window.restoreTimer();
    await refreshBilling();
   } catch (e) {
    user = null;
