@@ -6,59 +6,59 @@ function authMsg(msg, error=false) { el("auth-message").textContent=msg; el("aut
 function showAuth(show) { el("auth-screen").classList.toggle("hidden",!show); document.querySelector("header").classList.toggle("hidden",show); document.querySelector("main").classList.toggle("hidden",show); el("pwa-tools").classList.toggle("hidden",show); }
 let currentAuthMode = "login";
 window.setAuthMode = mode => { currentAuthMode=mode; const signup=mode==="signup"; el("auth-title").textContent=signup?"Create your account":"Welcome back"; el("auth-subtitle").textContent=signup?"Start tracking your freelance work.":"Sign in to access your workspace."; el("auth-submit").textContent=signup?"Create account":"Sign in"; el("auth-mode-toggle").textContent=signup?"Already have an account? Sign in":"New to FreelanceFlow? Create account"; el("auth-mode-toggle").dataset.mode=signup?"login":"signup"; authMsg(""); };
-window.submitAuth = async () => { const email=el("auth-email").value.trim(), password=el("auth-password").value; if(!email||password.length<8)return authMsg("Enter a valid email and a password of at least 8 characters.",true); const mode=currentAuthMode; authMsg(mode==="signup"?"Creating your account...":"Signing in..."); try { const {data,error}=mode==="signup"?await supabase.auth.signUp({email,password,options:{emailRedirectTo:location.origin+location.pathname}}):await supabase.auth.signInWithPassword({email,password}); if(error)throw error; if(mode==="signup"&&!data.session)authMsg("Check your inbox to confirm your email, then sign in."); } catch(e){authMsg(e.message,true);} };
-window.resetAuthPassword = async () => { const email=el("auth-email").value.trim(); if(!email)return authMsg("Enter your email first.",true); const {error}=await supabase.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname}); authMsg(error?error.message:"If an account exists, a reset email has been sent.",!!error); };
-window.signOutFreelanceFlow = async () => { const {error}=await supabase.auth.signOut(); if(error)alert(error.message); };
-function startRealtimeSync() {
- if (syncChannel) return; // Keep one channel per signed-in user; loadCloud() may run after every Realtime event.
- syncChannel = supabase.channel("freelanceflow-sync-" + user.id);
- for (const table of ["clients", "projects", "time_entries", "timer_sessions"]) {
-  syncChannel.on("postgres_changes", { event: "*", schema: "public", table, filter: "user_id=eq." + user.id }, payload => {
-   if (!user) return;
-   if (table === "timer_sessions") {
-    restoreTimer().catch(error => console.warn("Timer sync failed", error));
-   } else {
-    loadCloud().catch(error => console.warn("Cloud sync failed", error));
-   }
-  });
+let authSubmitting = false;
+let workspacePromise = null;
+async function enterWorkspace(session) {
+ if (!session?.user) throw new Error("The login response did not contain a user session.");
+ if (user?.id === session.user.id && workspacePromise) return workspacePromise;
+ user = session.user;
+ showAuth(false);
+ workspacePromise = (async () => {
+  try {
+   await importLocal();
+   await loadCloud();
+   await restoreTimer();
+   await refreshBilling();
+  } catch (e) {
+   user = null;
+   workspacePromise = null;
+   showAuth(true);
+   authMsg("Login succeeded, but your workspace could not load: " + e.message, true);
+   throw e;
+  }
+ })();
+ return workspacePromise;
+}
+window.submitAuth = async () => {
+ const email=el("auth-email").value.trim(), password=el("auth-password").value;
+ if(!email||password.length<8)return authMsg("Enter a valid email and a password of at least 8 characters.",true);
+ if(authSubmitting)return;
+ authSubmitting=true;
+ const mode=currentAuthMode, button=el("auth-submit");
+ button.disabled=true;
+ button.textContent=mode==="signup"?"Creating account...":"Signing in...";
+ authMsg(mode==="signup"?"Creating your account...":"Signing in...");
+ let timeoutId;
+ try {
+  const request = mode==="signup"
+   ? supabase.auth.signUp({email,password,options:{emailRedirectTo:location.origin+location.pathname}})
+   : supabase.auth.signInWithPassword({email,password});
+  const {data,error}=await Promise.race([request,new Promise((_,reject)=>{timeoutId=setTimeout(()=>reject(new Error("The request is taking too long. Check your internet connection and try again.")),15000);})]);
+  if(error)throw error;
+  if(mode==="signup"&&!data.session){authMsg("Check your inbox to confirm your email, then sign in.");return;}
+  if(data.session){await enterWorkspace(data.session);return;}
+  const sessionResult=await supabase.auth.getSession();
+  if(sessionResult.error)throw sessionResult.error;
+  if(sessionResult.data.session){await enterWorkspace(sessionResult.data.session);return;}
+  authMsg("Login was accepted, but no active session was returned. Please try again.",true);
+ } catch(e) {
+  authMsg(e.message||"Unable to sign in. Please try again.",true);
+ } finally {
+  if(timeoutId)clearTimeout(timeoutId);
+  authSubmitting=false;
+  button.disabled=false;
+  button.textContent=currentAuthMode==="signup"?"Create account":"Sign in";
  }
- syncChannel.subscribe(status => {
-  const badge = document.getElementById("connection-status");
-  if (badge) badge.title = status === "SUBSCRIBED" ? "Realtime cloud sync connected" : "Cloud sync: " + status;
- });
-}
-async function loadCloud() {
- const [c,p,t]=await Promise.all([supabase.from("clients").select("*").order("created_at"),supabase.from("projects").select("*").order("created_at"),supabase.from("time_entries").select("*").order("work_date",{ascending:false})]);
- for(const r of [c,p,t])if(r.error)throw r.error;
- appData={clients:(c.data||[]).map(x=>({id:x.id,name:x.name,contact:x.contact||"",notes:x.notes||""})),projects:(p.data||[]).map(x=>({id:x.id,clientId:x.client_id,name:x.name,hourlyRate:Number(x.hourly_rate),maxHours:x.max_hours==null?null:Number(x.max_hours),currency:x.currency||"EUR"})),entries:(t.data||[]).map(x=>({id:x.id,projectId:x.project_id,date:x.work_date,hours:Number(x.hours),description:x.description||""}))};
- populateSelects(); renderDashboard(); renderProjectsGrid(); renderReportTable(); el("account-email").textContent=user.email; startRealtimeSync();
-}
-async function importLocal() {
- const raw=localStorage.getItem("freelance_flow_data"); if(!raw)return;
- let old; try{old=JSON.parse(raw);}catch{return;}
- if(!old||!Array.isArray(old.clients)||!Array.isArray(old.projects)||!Array.isArray(old.entries)||(!old.clients.length&&!old.projects.length&&!old.entries.length))return;
- const {count,error}=await supabase.from("clients").select("id",{count:"exact",head:true}); if(error)throw error; if(count>0)return;
- if(!confirm("Import the clients, projects and hours saved in this browser into this cloud account? Choose Cancel to start empty."))return;
- const cm=new Map(),pm=new Map();
- for(const c of old.clients){const {data,error}=await supabase.from("clients").insert({user_id:user.id,name:String(c.name||"Unnamed client").slice(0,160),contact:c.contact||null}).select("id").single();if(error)throw error;cm.set(c.id,data.id);}
- for(const p of old.projects){const cid=cm.get(p.clientId);if(!cid)continue;const {data,error}=await supabase.from("projects").insert({user_id:user.id,client_id:cid,name:String(p.name||"Untitled project").slice(0,160),hourly_rate:Number(p.hourlyRate)||0,max_hours:p.maxHours==null?null:Number(p.maxHours),currency:"EUR"}).select("id").single();if(error)throw error;pm.set(p.id,data.id);}
- const rows=old.entries.map(x=>({user_id:user.id,project_id:pm.get(x.projectId),work_date:x.date||new Date().toISOString().slice(0,10),hours:Number(x.hours),description:x.description||null,source:"import"})).filter(x=>x.project_id&&x.hours>0&&x.hours<=24);
- if(rows.length){const {error}=await supabase.from("time_entries").insert(rows);if(error)throw error;}
- alert("Local data imported successfully.");
-}
-async function restoreTimer(){
- const {data,error}=await supabase.from("timer_sessions").select("*").in("status",["running","paused"]).order("created_at",{ascending:false}).limit(1);if(error)throw error;
- cloudTimer=data?.[0]||null;if(!cloudTimer){resetTimerUI();return;}
- timerElapsed=Number(cloudTimer.elapsed_seconds||0);timerStarted=cloudTimer.status==="running"?new Date(cloudTimer.started_at).getTime():null;isTimerRunning=!!timerStarted;el("timer-project-select").value=cloudTimer.project_id;el("timer-description").value=cloudTimer.description||"";if(isTimerRunning)startTicker();displayTimer();el("quick-timer-badge").classList.remove("hidden");el("quick-timer-badge").classList.add("flex");el("btn-timer-start").textContent=isTimerRunning?"Pause Timer":"Resume / Save";
-}
-function stopTicker(){if(ticker)clearInterval(ticker);ticker=null;}
-function displayTimer(){timerSeconds=timerElapsed+(timerStarted?Math.floor((Date.now()-timerStarted)/1000):0);updateTimerClock();}
-function startTicker(){stopTicker();ticker=setInterval(displayTimer,1000);}
-function resetTimerUI(){stopTicker();cloudTimer=null;timerStarted=null;timerElapsed=0;isTimerRunning=false;timerSeconds=0;updateTimerClock();el("quick-timer-badge").classList.add("hidden");el("btn-timer-start").textContent="Start Timer";}
-window.toggleTimer=async()=>{
- if(!cloudTimer){const project_id=el("timer-project-select").value;if(!project_id)return alert("Select a project first.");const {data,error}=await supabase.from("timer_sessions").insert({user_id:user.id,project_id,description:el("timer-description").value.trim()||null,started_at:new Date().toISOString(),elapsed_seconds:0,status:"running"}).select("*").single();if(error)return alert(error.message);cloudTimer=data;timerElapsed=0;timerStarted=Date.now();isTimerRunning=true;startTicker();el("quick-timer-badge").classList.remove("hidden");el("quick-timer-badge").classList.add("flex");el("btn-timer-start").textContent="Pause Timer";return;}
- if(isTimerRunning){timerElapsed+=Math.floor((Date.now()-timerStarted)/1000);timerStarted=null;isTimerRunning=false;stopTicker();const {data,error}=await supabase.from("timer_sessions").update({elapsed_seconds:timerElapsed,status:"paused"}).eq("id",cloudTimer.id).select("*").single();if(error)return alert(error.message);cloudTimer=data;displayTimer();el("btn-timer-start").textContent="Resume / Save";if(timerElapsed>=60&&confirm("Save the recorded time as a time entry?"))await window.showSaveTimerOption();}
- else{timerStarted=Date.now();isTimerRunning=true;const {data,error}=await supabase.from("timer_sessions").update({status:"running",started_at:new Date().toISOString()}).eq("id",cloudTimer.id).select("*").single();if(error){timerStarted=null;isTimerRunning=false;return alert(error.message);}cloudTimer=data;startTicker();el("btn-timer-start").textContent="Pause Timer";}
 };
 window.showSaveTimerOption=async()=>{if(!cloudTimer)return;if(isTimerRunning&&timerStarted){timerElapsed+=Math.floor((Date.now()-timerStarted)/1000);timerStarted=null;isTimerRunning=false;stopTicker();}const hours=Number((timerElapsed/3600).toFixed(2));if(hours<=0)return alert("Timer duration is too short.");let {error}=await supabase.from("time_entries").insert({user_id:user.id,project_id:cloudTimer.project_id,work_date:new Date().toISOString().slice(0,10),hours,description:cloudTimer.description,source:"timer"});if(error)return alert(error.message);({error}=await supabase.from("timer_sessions").update({status:"saved",elapsed_seconds:timerElapsed,stopped_at:new Date().toISOString()}).eq("id",cloudTimer.id));if(error)return alert(error.message);resetTimerUI();await loadCloud();switchTab("dashboard");};
 window.resetTimer=async()=>{if(cloudTimer){const {error}=await supabase.from("timer_sessions").update({status:"discarded",elapsed_seconds:timerElapsed,stopped_at:new Date().toISOString()}).eq("id",cloudTimer.id);if(error)return alert(error.message);}resetTimerUI();};
@@ -67,8 +67,8 @@ window.saveProject=async e=>{e.preventDefault();const client_id=el("project-clie
 window.saveManualEntry=async e=>{e.preventDefault();const project_id=el("manual-project-select").value,work_date=el("manual-date").value,hours=Number(el("manual-hours").value),description=el("manual-description").value.trim();if(!project_id||!work_date||!Number.isFinite(hours)||hours<=0||hours>24)return alert("Enter a project, date and hours between 0 and 24.");const {error}=await supabase.from("time_entries").insert({user_id:user.id,project_id,work_date,hours,description:description||null,source:"manual"});if(error)return alert(error.message);el("form-manual-entry").reset();el("manual-date").value=new Date().toISOString().slice(0,10);await loadCloud();switchTab("dashboard");};
 window.deleteEntry=async id=>{if(!confirm("Delete this time entry?"))return;const {error}=await supabase.from("time_entries").delete().eq("id",id);if(error)return alert(error.message);await loadCloud();};
 window.deleteProject=async id=>{if(!confirm("Delete this project? Its time entries must be deleted first."))return;const {error}=await supabase.from("projects").delete().eq("id",id);if(error)return alert(error.message);await loadCloud();};
-window.onload=async()=>{el("manual-date").value=new Date().toISOString().slice(0,10);el("report-gen-date").textContent=new Date().toLocaleDateString("en-GB");lucide.createIcons();const {data,error}=await supabase.auth.getSession();if(error)console.error(error);if(!data.session){showAuth(true);window.setAuthMode("login");return;}user=data.session.user;showAuth(false);try{await importLocal();await loadCloud();await restoreTimer();await refreshBilling();}catch(e){alert("Cloud data could not be loaded: "+e.message);showAuth(true);}};
-supabase.auth.onAuthStateChange((event,session)=>{if(event==="SIGNED_IN"&&session&&!user){user=session.user;setTimeout(async()=>{showAuth(false);try{await importLocal();await loadCloud();await restoreTimer();await refreshBilling();}catch(e){authMsg(e.message,true);}},0);}if(event==="SIGNED_OUT"){user=null;if(syncChannel){supabase.removeChannel(syncChannel);syncChannel=null;}resetTimerUI();showAuth(true);window.setAuthMode("login");}});
+window.onload=async()=>{el("manual-date").value=new Date().toISOString().slice(0,10);el("report-gen-date").textContent=new Date().toLocaleDateString("en-GB");lucide.createIcons();try{const {data,error}=await supabase.auth.getSession();if(error)throw error;if(!data.session){showAuth(true);window.setAuthMode("login");return;}await enterWorkspace(data.session);}catch(e){console.error("FreelanceFlow startup failed",e);showAuth(true);authMsg("Your session could not be loaded: "+e.message,true);}};
+supabase.auth.onAuthStateChange((event,session)=>{if(event==="SIGNED_IN"&&session&&!user){setTimeout(()=>enterWorkspace(session).catch(error=>console.error("Workspace initialization failed",error)),0);}if(event==="SIGNED_OUT"){user=null;workspacePromise=null;if(syncChannel){supabase.removeChannel(syncChannel);syncChannel=null;}resetTimerUI();showAuth(true);window.setAuthMode("login");}});
 
 const BILLING_FUNCTIONS = { checkout: "create-checkout-session", portal: "create-portal-session" };
 window.refreshBilling = async () => {
