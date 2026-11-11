@@ -79,7 +79,10 @@
                     <button onclick="switchTab('dashboard')" id="nav-dashboard" class="tab-btn active px-4 py-2 text-sm font-medium rounded-lg text-brand-600 bg-white shadow-sm transition">
                         <i data-lucide="layout-dashboard" class="w-4 h-4 inline mr-1.5"></i> Dashboard
                     </button>
-                    <button onclick="switchTab('timer')" id="nav-timer" class="tab-btn px-4 py-2 text-sm font-medium rounded-lg text-slate-600 hover:text-slate-900 transition">
+                    <button onclick="switchTab('analytics')" id="nav-analytics" class="tab-btn px-4 py-2 text-sm font-medium rounded-lg text-slate-600 hover:text-slate-900 transition">
+                        <i data-lucide="chart-no-axes-combined" class="w-4 h-4 inline mr-1.5"></i> Analytics <span class="ml-1 text-[10px] font-bold text-amber-600">PRO</span>
+                    </button>
+                    <button onclick="switchTab('timer') id="nav-timer" class="tab-btn px-4 py-2 text-sm font-medium rounded-lg text-slate-600 hover:text-slate-900 transition">
                         <i data-lucide="play-circle" class="w-4 h-4 inline mr-1.5"></i> Track Hours
                     </button>
                     <button onclick="switchTab('projects')" id="nav-projects" class="tab-btn px-4 py-2 text-sm font-medium rounded-lg text-slate-600 hover:text-slate-900 transition">
@@ -110,7 +113,10 @@
             <button onclick="switchTab('dashboard')" class="mobile-nav-btn p-2 text-xs font-medium text-slate-600 flex flex-col items-center">
                 <i data-lucide="layout-dashboard" class="w-5 h-5 mb-1"></i> Dashboard
             </button>
-            <button onclick="switchTab('timer')" class="mobile-nav-btn p-2 text-xs font-medium text-slate-600 flex flex-col items-center">
+            <button onclick="switchTab('analytics')" class="mobile-nav-btn p-2 text-xs font-medium text-slate-600 flex flex-col items-center">
+                <i data-lucide="chart-no-axes-combined" class="w-5 h-5 mb-1"></i> Analytics
+            </button>
+            <button onclick="switchTab('timer') class="mobile-nav-btn p-2 text-xs font-medium text-slate-600 flex flex-col items-center">
                 <i data-lucide="play-circle" class="w-5 h-5 mb-1"></i> Hours
             </button>
             <button onclick="switchTab('projects')" class="mobile-nav-btn p-2 text-xs font-medium text-slate-600 flex flex-col items-center">
@@ -222,6 +228,39 @@
                         </tbody>
                     </table>
                 </div>
+            </div>
+        </div>
+
+
+        <!-- PREMIUM: ADVANCED ANALYTICS -->
+        <div id="tab-analytics" class="tab-content hidden space-y-6">
+            <div id="analytics-locked" class="hidden bg-white p-8 sm:p-10 rounded-2xl border border-slate-200 shadow-sm text-center">
+                <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-50 text-amber-600"><i data-lucide="lock-keyhole" class="w-7 h-7"></i></div>
+                <p class="text-xs font-bold uppercase tracking-wider text-amber-600">FreelanceFlow Pro</p>
+                <h2 class="mt-2 text-2xl font-bold text-slate-900">Unlock Advanced Analytics</h2>
+                <p class="mx-auto mt-2 max-w-xl text-sm text-slate-500">See revenue trends, your effective hourly rate, top clients and project performance in one place.</p>
+                <button onclick="switchTab('billing')" class="mt-6 rounded-xl bg-brand-600 px-5 py-3 text-sm font-semibold text-white hover:bg-brand-700">Explore Pro</button>
+            </div>
+            <div id="analytics-content" class="hidden space-y-6">
+                <div class="flex flex-wrap items-end justify-between gap-3">
+                    <div><p class="text-xs font-bold uppercase tracking-wider text-brand-600">FreelanceFlow Pro</p><h2 class="mt-1 text-2xl font-bold text-slate-900">Advanced Analytics</h2><p class="mt-1 text-sm text-slate-500">Understand your revenue, workload and client mix.</p></div>
+                    <select id="analytics-period" onchange="renderAdvancedAnalytics()" class="rounded-xl border border-slate-300 bg-white p-2.5 text-sm"><option value="30">Last 30 days</option><option value="90" selected>Last 90 days</option><option value="365">Last 12 months</option><option value="all">All time</option></select>
+                </div>
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                    <div class="rounded-2xl border border-slate-200 bg-white p-5"><p class="text-xs font-medium uppercase tracking-wide text-slate-500">Revenue</p><p id="analytics-revenue" class="mt-2 text-2xl font-bold text-slate-900">€0</p><p class="mt-1 text-xs text-slate-400">Based on logged hours × project rate</p></div>
+                    <div class="rounded-2xl border border-slate-200 bg-white p-5"><p class="text-xs font-medium uppercase tracking-wide text-slate-500">Hours tracked</p><p id="analytics-hours" class="mt-2 text-2xl font-bold text-slate-900">0 h</p><p class="mt-1 text-xs text-slate-400">Within selected period</p></div>
+                    <div class="rounded-2xl border border-slate-200 bg-white p-5"><p class="text-xs font-medium uppercase tracking-wide text-slate-500">Effective hourly rate</p><p id="analytics-rate" class="mt-2 text-2xl font-bold text-slate-900">€0</p><p class="mt-1 text-xs text-slate-400">Revenue divided by tracked hours</p></div>
+                    <div class="rounded-2xl border border-slate-200 bg-white p-5"><p class="text-xs font-medium uppercase tracking-wide text-slate-500">Active clients</p><p id="analytics-clients" class="mt-2 text-2xl font-bold text-slate-900">0</p><p class="mt-1 text-xs text-slate-400">Clients with tracked hours</p></div>
+                </div>
+                <div class="grid grid-cols-1 gap-6 xl:grid-cols-5">
+                    <div class="rounded-2xl border border-slate-200 bg-white p-5 xl:col-span-3"><h3 class="font-semibold text-slate-900">Revenue over time</h3><p class="mb-4 mt-1 text-xs text-slate-500">Monthly revenue from recorded work</p><div class="relative h-72"><canvas id="analytics-revenue-chart"></canvas></div></div>
+                    <div class="rounded-2xl border border-slate-200 bg-white p-5 xl:col-span-2"><h3 class="font-semibold text-slate-900">Hours by client</h3><p class="mb-4 mt-1 text-xs text-slate-500">How your tracked time is distributed</p><div class="relative h-72"><canvas id="analytics-client-chart"></canvas></div></div>
+                </div>
+                <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+                    <div class="border-b border-slate-200 p-5"><h3 class="font-semibold text-slate-900">Project performance</h3><p class="mt-1 text-xs text-slate-500">Revenue and hours for each project in this period</p></div>
+                    <div class="overflow-x-auto"><table class="w-full text-left text-sm"><thead class="bg-slate-50 text-xs uppercase text-slate-500"><tr><th class="px-5 py-3">Project</th><th class="px-5 py-3">Client</th><th class="px-5 py-3 text-right">Hours</th><th class="px-5 py-3 text-right">Revenue</th><th class="px-5 py-3 text-right">Hourly rate</th></tr></thead><tbody id="analytics-project-table" class="divide-y divide-slate-100"></tbody></table></div>
+                </div>
+                <p class="text-xs text-slate-400">Revenue is an estimate based on recorded hours and each project's current hourly rate. It is not accounting profit and does not subtract expenses or taxes.</p>
             </div>
         </div>
 
@@ -577,6 +616,8 @@
 
             if (tabId === 'dashboard') {
                 renderDashboard();
+            } else if (tabId === 'analytics') {
+                renderAdvancedAnalytics();
             } else if (tabId === 'projects') {
                 renderProjectsGrid();
             } else if (tabId === 'reports') {
@@ -759,6 +800,55 @@
                     scales: { y: { beginAtZero: true } }
                 }
             });
+        }
+
+
+        // --- PREMIUM ADVANCED ANALYTICS ---
+        let analyticsRevenueChart = null;
+        let analyticsClientChart = null;
+        function renderAdvancedAnalytics() {
+            const unlocked = ['active', 'trialing'].includes(window.freelanceFlowPlan || 'free');
+            document.getElementById('analytics-locked').classList.toggle('hidden', unlocked);
+            document.getElementById('analytics-content').classList.toggle('hidden', !unlocked);
+            if (!unlocked) return;
+            const period = document.getElementById('analytics-period')?.value || '90';
+            const cutoff = period === 'all' ? null : new Date(Date.now() - Number(period) * 86400000);
+            const entries = appData.entries.filter(entry => {
+                if (!entry.date) return false;
+                const date = new Date(entry.date + 'T00:00:00');
+                return !cutoff || date >= cutoff;
+            });
+            const projectStats = new Map();
+            const clientStats = new Map();
+            const monthly = new Map();
+            let hours = 0, revenue = 0;
+            entries.forEach(entry => {
+                const project = getProjectById(entry.projectId);
+                const client = getClientById(project.clientId);
+                const h = Number(entry.hours) || 0;
+                const amount = h * (Number(project.hourlyRate) || 0);
+                hours += h; revenue += amount;
+                const p = projectStats.get(project.id) || { name: project.name, client: client.name, hours: 0, revenue: 0, rate: Number(project.hourlyRate) || 0 };
+                p.hours += h; p.revenue += amount; projectStats.set(project.id, p);
+                clientStats.set(client.name, (clientStats.get(client.name) || 0) + h);
+                const key = entry.date.slice(0, 7);
+                monthly.set(key, (monthly.get(key) || 0) + amount);
+            });
+            document.getElementById('analytics-revenue').textContent = formatMoney(revenue);
+            document.getElementById('analytics-hours').textContent = hours.toFixed(2) + ' h';
+            document.getElementById('analytics-rate').textContent = formatMoney(hours ? revenue / hours : 0);
+            document.getElementById('analytics-clients').textContent = String(clientStats.size);
+            const monthKeys = [...monthly.keys()].sort();
+            const labels = monthKeys.length ? monthKeys : ['No data'];
+            const values = monthKeys.length ? monthKeys.map(key => monthly.get(key)) : [0];
+            const revenueCtx = document.getElementById('analytics-revenue-chart').getContext('2d');
+            if (analyticsRevenueChart) analyticsRevenueChart.destroy();
+            analyticsRevenueChart = new Chart(revenueCtx, { type: 'line', data: { labels, datasets: [{ label: 'Revenue', data: values, borderColor: '#2563eb', backgroundColor: 'rgba(37,99,235,.10)', fill: true, tension: .3 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } } });
+            const clientCtx = document.getElementById('analytics-client-chart').getContext('2d');
+            if (analyticsClientChart) analyticsClientChart.destroy();
+            analyticsClientChart = new Chart(clientCtx, { type: 'doughnut', data: { labels: [...clientStats.keys()], datasets: [{ data: [...clientStats.values()], backgroundColor: ['#2563eb','#10b981','#f59e0b','#8b5cf6','#ec4899','#06b6d4','#f97316'] }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } } });
+            const rows = [...projectStats.values()].sort((a,b) => b.revenue - a.revenue);
+            document.getElementById('analytics-project-table').innerHTML = rows.length ? rows.map(p => '<tr><td class="px-5 py-3 font-medium text-slate-900">' + escapeHTML(p.name) + '</td><td class="px-5 py-3 text-slate-600">' + escapeHTML(p.client) + '</td><td class="px-5 py-3 text-right">' + p.hours.toFixed(2) + ' h</td><td class="px-5 py-3 text-right font-semibold">' + formatMoney(p.revenue) + '</td><td class="px-5 py-3 text-right">' + formatMoney(p.rate) + '/h</td></tr>').join('') : '<tr><td colspan="5" class="px-5 py-8 text-center text-slate-400">No tracked hours in this period yet.</td></tr>';
         }
 
         // --- TIMER LOGIC ---
