@@ -1,4 +1,4 @@
-const CACHE_NAME = 'freelanceflow-v8';
+const CACHE_NAME = 'freelanceflow-v9';
 const APP_SHELL = [
   './',
   './index.html',
